@@ -6,7 +6,12 @@ import { useRouter } from 'next/navigation'
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [totalCredits, setTotalCredits] = useState(0)
+  const [completedCredits, setCompletedCredits] = useState(0)
+  const [currentSemester, setCurrentSemester] = useState(1)
   const router = useRouter()
+
+  const TOTAL_CREDITS_REQUIRED = 160
 
   useEffect(() => {
     const checkUser = async () => {
@@ -15,29 +20,45 @@ export default function Dashboard() {
         router.push('/login')
       } else {
         setUser(session.user)
+        fetchStats(session.user.id)
       }
       setLoading(false)
     }
     checkUser()
   }, [])
 
+  const fetchStats = async (userId: string) => {
+    const { data } = await supabase
+      .from('courses')
+      .select('*')
+      .eq('user_id', userId)
+
+    if (data) {
+      const completed = data.reduce((sum, course) => sum + course.credits, 0)
+      const maxSemester = data.length > 0 ? Math.max(...data.map((c) => c.semester)) : 1
+      setCompletedCredits(completed)
+      setCurrentSemester(maxSemester)
+    }
+  }
+
   const handleLogout = async () => {
     await supabase.auth.signOut()
     router.push('/')
   }
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <p className="text-xl text-gray-500">Loading...</p>
-    </div>
-  )
+  if (loading) return <p className="p-8">Loading...</p>
+
+  const remainingCredits = TOTAL_CREDITS_REQUIRED - completedCredits
+  const progressPercent = Math.round((completedCredits / TOTAL_CREDITS_REQUIRED) * 100)
 
   return (
     <main className="min-h-screen bg-gray-50">
-      
       <nav className="bg-white shadow p-4 flex justify-between items-center">
         <h1 className="text-2xl font-bold text-blue-700">SmartTrack</h1>
         <div className="flex items-center gap-4">
+          <a href="/courses" className="text-blue-600 hover:underline">Courses</a>
+          <a href="/baskets" className="text-blue-600 hover:underline">Baskets</a>
+          <a href="/planner" className="text-blue-600 hover:underline">Planner</a>
           <span className="text-gray-600 text-sm">{user?.email}</span>
           <button
             onClick={handleLogout}
@@ -50,20 +71,31 @@ export default function Dashboard() {
 
       <div className="p-8">
         <h2 className="text-3xl font-bold mb-6">Dashboard</h2>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white p-6 rounded-xl shadow">
             <h3 className="text-gray-500 mb-1">Credits Completed</h3>
-            <p className="text-4xl font-bold text-blue-600">0</p>
+            <p className="text-4xl font-bold text-blue-600">{completedCredits}</p>
           </div>
           <div className="bg-white p-6 rounded-xl shadow">
             <h3 className="text-gray-500 mb-1">Credits Remaining</h3>
-            <p className="text-4xl font-bold text-orange-500">0</p>
+            <p className="text-4xl font-bold text-orange-500">{remainingCredits}</p>
           </div>
           <div className="bg-white p-6 rounded-xl shadow">
             <h3 className="text-gray-500 mb-1">Current Semester</h3>
-            <p className="text-4xl font-bold text-green-600">1</p>
+            <p className="text-4xl font-bold text-green-600">{currentSemester}</p>
           </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow mb-8">
+          <h3 className="text-xl font-bold mb-4">Graduation Progress</h3>
+          <div className="w-full bg-gray-200 rounded-full h-6">
+            <div
+              className="bg-blue-600 h-6 rounded-full transition-all"
+              style={{ width: `${progressPercent}%` }}
+            ></div>
+          </div>
+          <p className="mt-2 text-gray-600">{progressPercent}% complete — {completedCredits} of {TOTAL_CREDITS_REQUIRED} credits</p>
         </div>
 
         <div className="bg-white p-6 rounded-xl shadow">
