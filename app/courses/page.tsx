@@ -33,19 +33,17 @@ export default function Courses() {
   }, [])
 
   const fetchCourses = async (userId: string) => {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('courses')
       .select('*')
       .eq('user_id', userId)
       .order('semester', { ascending: true })
-    
     if (data) setCourses(data)
     setLoading(false)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
     const { error } = await supabase.from('courses').insert({
       user_id: user.id,
       course_name: form.course_name,
@@ -56,12 +54,30 @@ export default function Courses() {
       basket: form.basket,
       status: 'completed'
     })
-
     if (!error) {
       setShowForm(false)
       setForm({ course_name: '', course_code: '', credits: '', grade: '', semester: '', basket: 'Core' })
       fetchCourses(user.id)
     }
+  }
+
+  const exportCSV = () => {
+    const headers = ['Course Name', 'Course Code', 'Credits', 'Grade', 'Semester', 'Basket']
+    const rows = courses.map((c) => [
+      c.course_name,
+      c.course_code,
+      c.credits,
+      c.grade,
+      c.semester,
+      c.basket
+    ])
+    const csvContent = [headers, ...rows].map((r) => r.join(',')).join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'my_courses.csv'
+    a.click()
   }
 
   const handleDelete = async (id: string) => {
@@ -79,18 +95,27 @@ export default function Courses() {
           <a href="/dashboard" className="text-blue-600 hover:underline">Dashboard</a>
           <a href="/baskets" className="text-blue-600 hover:underline">Baskets</a>
           <a href="/planner" className="text-blue-600 hover:underline">Planner</a>
+          <a href="/history" className="text-blue-600 hover:underline">History</a>
         </div>
       </nav>
 
       <div className="p-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-3xl font-bold">My Courses</h2>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-          >
-            {showForm ? 'Cancel' : '+ Add Course'}
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={exportCSV}
+              className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700"
+            >
+              Export CSV
+            </button>
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+            >
+              {showForm ? 'Cancel' : '+ Add Course'}
+            </button>
+          </div>
         </div>
 
         {showForm && (
