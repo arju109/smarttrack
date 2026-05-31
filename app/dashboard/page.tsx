@@ -134,7 +134,7 @@ export default function Dashboard() {
                     cy="50%"
                     outerRadius={80}
                     dataKey="credits"
-                    label={({ name, credits }) => `${name}: ${credits}`}
+                    label={({ name, value }) => `${name}: ${value}`}
                   >
                     {basketData.map((_, index) => (
                       <Cell key={index} fill={COLORS[index % COLORS.length]} />
