@@ -7,6 +7,8 @@ export default function Courses() {
   const [courses, setCourses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [search, setSearch] = useState('')
+  const [filterBasket, setFilterBasket] = useState('All')
   const [editingCourse, setEditingCourse] = useState<any>(null)
   const [user, setUser] = useState<any>(null)
   const router = useRouter()
@@ -42,6 +44,13 @@ export default function Courses() {
     if (data) setCourses(data)
     setLoading(false)
   }
+
+  const filteredCourses = courses.filter((c) => {
+    const matchSearch = c.course_name.toLowerCase().includes(search.toLowerCase()) ||
+      c.course_code?.toLowerCase().includes(search.toLowerCase())
+    const matchBasket = filterBasket === 'All' || c.basket === filterBasket
+    return matchSearch && matchBasket
+  })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -133,6 +142,7 @@ export default function Courses() {
           <a href="/planner" className="text-blue-600 hover:underline">Planner</a>
           <a href="/history" className="text-blue-600 hover:underline">History</a>
           <a href="/calendar" className="text-blue-600 hover:underline">Calendar</a>
+          <a href="/mandatory" className="text-blue-600 hover:underline">Mandatory</a>
         </div>
       </nav>
 
@@ -221,6 +231,27 @@ export default function Courses() {
           </div>
         )}
 
+        <div className="bg-white p-4 rounded-xl shadow mb-4 flex gap-4">
+          <input
+            placeholder="Search courses..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="border p-3 rounded-lg flex-1"
+          />
+          <select
+            value={filterBasket}
+            onChange={(e) => setFilterBasket(e.target.value)}
+            className="border p-3 rounded-lg"
+          >
+            <option>All</option>
+            <option>Core</option>
+            <option>Elective</option>
+            <option>Lab</option>
+            <option>Humanities</option>
+            <option>Other</option>
+          </select>
+        </div>
+
         <div className="bg-white rounded-xl shadow overflow-hidden">
           <table className="w-full">
             <thead className="bg-blue-50">
@@ -235,14 +266,14 @@ export default function Courses() {
               </tr>
             </thead>
             <tbody>
-              {courses.length === 0 ? (
+              {filteredCourses.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-8 text-center text-gray-500">
-                    No courses added yet. Click "+ Add Course" to start!
+                    {courses.length === 0 ? 'No courses added yet. Click "+ Add Course" to start!' : 'No courses match your search.'}
                   </td>
                 </tr>
               ) : (
-                courses.map((course) => (
+                filteredCourses.map((course) => (
                   <tr key={course.id} className="border-t hover:bg-gray-50">
                     <td className="p-4">{course.course_name}</td>
                     <td className="p-4">{course.course_code}</td>
