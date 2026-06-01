@@ -7,6 +7,7 @@ export default function Courses() {
   const [courses, setCourses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [editingCourse, setEditingCourse] = useState<any>(null)
   const [user, setUser] = useState<any>(null)
   const router = useRouter()
 
@@ -44,21 +45,56 @@ export default function Courses() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const { error } = await supabase.from('courses').insert({
-      user_id: user.id,
-      course_name: form.course_name,
-      course_code: form.course_code,
-      credits: parseInt(form.credits),
-      grade: form.grade,
-      semester: parseInt(form.semester),
-      basket: form.basket,
-      status: 'completed'
-    })
-    if (!error) {
-      setShowForm(false)
-      setForm({ course_name: '', course_code: '', credits: '', grade: '', semester: '', basket: 'Core' })
-      fetchCourses(user.id)
+
+    if (editingCourse) {
+      const { error } = await supabase
+        .from('courses')
+        .update({
+          course_name: form.course_name,
+          course_code: form.course_code,
+          credits: parseInt(form.credits),
+          grade: form.grade,
+          semester: parseInt(form.semester),
+          basket: form.basket
+        })
+        .eq('id', editingCourse.id)
+
+      if (!error) {
+        setEditingCourse(null)
+        setShowForm(false)
+        setForm({ course_name: '', course_code: '', credits: '', grade: '', semester: '', basket: 'Core' })
+        fetchCourses(user.id)
+      }
+    } else {
+      const { error } = await supabase.from('courses').insert({
+        user_id: user.id,
+        course_name: form.course_name,
+        course_code: form.course_code,
+        credits: parseInt(form.credits),
+        grade: form.grade,
+        semester: parseInt(form.semester),
+        basket: form.basket,
+        status: 'completed'
+      })
+      if (!error) {
+        setShowForm(false)
+        setForm({ course_name: '', course_code: '', credits: '', grade: '', semester: '', basket: 'Core' })
+        fetchCourses(user.id)
+      }
     }
+  }
+
+  const handleEdit = (course: any) => {
+    setEditingCourse(course)
+    setForm({
+      course_name: course.course_name,
+      course_code: course.course_code,
+      credits: course.credits.toString(),
+      grade: course.grade,
+      semester: course.semester.toString(),
+      basket: course.basket
+    })
+    setShowForm(true)
   }
 
   const exportCSV = () => {
@@ -96,6 +132,7 @@ export default function Courses() {
           <a href="/baskets" className="text-blue-600 hover:underline">Baskets</a>
           <a href="/planner" className="text-blue-600 hover:underline">Planner</a>
           <a href="/history" className="text-blue-600 hover:underline">History</a>
+          <a href="/calendar" className="text-blue-600 hover:underline">Calendar</a>
         </div>
       </nav>
 
@@ -110,7 +147,11 @@ export default function Courses() {
               Export CSV
             </button>
             <button
-              onClick={() => setShowForm(!showForm)}
+              onClick={() => {
+                setEditingCourse(null)
+                setForm({ course_name: '', course_code: '', credits: '', grade: '', semester: '', basket: 'Core' })
+                setShowForm(!showForm)
+              }}
               className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
             >
               {showForm ? 'Cancel' : '+ Add Course'}
@@ -120,7 +161,9 @@ export default function Courses() {
 
         {showForm && (
           <div className="bg-white p-6 rounded-xl shadow mb-6">
-            <h3 className="text-xl font-bold mb-4">Add New Course</h3>
+            <h3 className="text-xl font-bold mb-4">
+              {editingCourse ? 'Edit Course' : 'Add New Course'}
+            </h3>
             <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
               <input
                 placeholder="Course Name"
@@ -172,7 +215,7 @@ export default function Courses() {
                 type="submit"
                 className="col-span-2 bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700"
               >
-                Save Course
+                {editingCourse ? 'Update Course' : 'Save Course'}
               </button>
             </form>
           </div>
@@ -188,7 +231,7 @@ export default function Courses() {
                 <th className="p-4 text-left">Grade</th>
                 <th className="p-4 text-left">Semester</th>
                 <th className="p-4 text-left">Basket</th>
-                <th className="p-4 text-left">Action</th>
+                <th className="p-4 text-left">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -207,7 +250,13 @@ export default function Courses() {
                     <td className="p-4">{course.grade}</td>
                     <td className="p-4">{course.semester}</td>
                     <td className="p-4">{course.basket}</td>
-                    <td className="p-4">
+                    <td className="p-4 flex gap-3">
+                      <button
+                        onClick={() => handleEdit(course)}
+                        className="text-blue-500 hover:text-blue-700"
+                      >
+                        Edit
+                      </button>
                       <button
                         onClick={() => handleDelete(course.id)}
                         className="text-red-500 hover:text-red-700"

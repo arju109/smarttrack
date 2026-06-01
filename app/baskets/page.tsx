@@ -17,6 +17,14 @@ export default function Baskets() {
     Other: 15
   }
 
+  const pendingCourses: { [key: string]: string[] } = {
+    Core: ['Data Structures', 'Algorithms', 'Operating Systems', 'Computer Networks'],
+    Elective: ['Machine Learning', 'Computer Vision', 'Blockchain'],
+    Lab: ['Physics Lab', 'Chemistry Lab', 'Electronics Lab'],
+    Humanities: ['Economics', 'Philosophy', 'Sociology'],
+    Other: ['Sports', 'NSS', 'Cultural Activities']
+  }
+
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession()
@@ -40,12 +48,19 @@ export default function Baskets() {
 
   const getBasketCredits = (basket: string) => {
     return courses
-      .filter((c) => c.basket === basket)
+      .filter((c) => c.basket === basket && c.status === 'completed')
       .reduce((sum, c) => sum + c.credits, 0)
   }
 
-  const getBasketCourses = (basket: string) => {
-    return courses.filter((c) => c.basket === basket)
+  const getCompletedCourses = (basket: string) => {
+    return courses.filter((c) => c.basket === basket && c.status === 'completed')
+  }
+
+  const getPendingCourses = (basket: string) => {
+    const completed = getCompletedCourses(basket).map((c) => c.course_name.toLowerCase())
+    return pendingCourses[basket]?.filter(
+      (p) => !completed.some((c) => c.includes(p.toLowerCase()))
+    ) || []
   }
 
   if (loading) return <p className="p-8">Loading...</p>
@@ -58,6 +73,8 @@ export default function Baskets() {
           <a href="/dashboard" className="text-blue-600 hover:underline">Dashboard</a>
           <a href="/courses" className="text-blue-600 hover:underline">Courses</a>
           <a href="/planner" className="text-blue-600 hover:underline">Planner</a>
+          <a href="/history" className="text-blue-600 hover:underline">History</a>
+          <a href="/calendar" className="text-blue-600 hover:underline">Calendar</a>
         </div>
       </nav>
 
@@ -69,7 +86,8 @@ export default function Baskets() {
             const completed = getBasketCredits(basket)
             const required = requiredCredits[basket]
             const percent = Math.min(Math.round((completed / required) * 100), 100)
-            const basketCourses = getBasketCourses(basket)
+            const completedCoursesList = getCompletedCourses(basket)
+            const pendingList = getPendingCourses(basket)
 
             return (
               <div key={basket} className="bg-white p-6 rounded-xl shadow">
@@ -84,18 +102,41 @@ export default function Baskets() {
                     style={{ width: `${percent}%` }}
                   ></div>
                 </div>
-                <p className="text-sm text-gray-600 mb-3">{percent}% complete</p>
+                <p className="text-sm text-gray-600 mb-4">{percent}% complete</p>
 
-                {basketCourses.length > 0 ? (
-                  <ul className="text-sm text-gray-700 space-y-1">
-                    {basketCourses.map((course) => (
-                      <li key={course.id} className="flex justify-between">
-                        <span>{course.course_name}</span>
-                        <span className="text-blue-600">{course.credits} credits</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
+                {completedCoursesList.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-sm font-semibold text-green-700 mb-2">
+                      ✅ Completed Courses:
+                    </p>
+                    <ul className="text-sm text-gray-700 space-y-1">
+                      {completedCoursesList.map((course) => (
+                        <li key={course.id} className="flex justify-between">
+                          <span>{course.course_name}</span>
+                          <span className="text-blue-600">{course.credits} credits</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {pendingList.length > 0 && (
+                  <div>
+                    <p className="text-sm font-semibold text-orange-600 mb-2">
+                      ⏳ Suggested Pending:
+                    </p>
+                    <ul className="text-sm text-gray-500 space-y-1">
+                      {pendingList.map((course, index) => (
+                        <li key={index} className="flex items-center gap-2">
+                          <span className="w-2 h-2 bg-orange-400 rounded-full"></span>
+                          {course}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {completedCoursesList.length === 0 && pendingList.length === 0 && (
                   <p className="text-sm text-gray-400">No courses added yet</p>
                 )}
               </div>
